@@ -4,22 +4,20 @@ const express = require("express");
 const mongoose = require("mongoose");
 const { connect } = require("./routes/feed");
 const multer = require("multer");
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 const MONGODB_URI =
   "mongodb+srv://carlos:GCcq4p1hT8lTUi3T@cluster0.yhobs.mongodb.net/messages?retryWrites=true&w=majority";
 
 feedRoutes = require("./routes/feed");
+authRoutes = require("./routes/auth");
 
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "images");
   },
   filename: (req, file, cb) => {
-    cb(
-      null,
-      uuidv4() + "-" + file.originalname
-    );
+    cb(null, uuidv4() + "-" + file.originalname);
   },
 });
 const fileFilter = (req, file, cb) => {
@@ -59,13 +57,16 @@ app.use((req, res, next) => {
 });
 
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
 app.use((error, req, res, next) => {
   console.log(error);
   const status = error.statusCode || 500;
   const message = error.message;
+  const data = error.data;
   res.status(status).json({
     message: message,
+    data: data,
   });
 });
 
