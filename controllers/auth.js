@@ -7,7 +7,7 @@ exports.signup = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new Error("Validation Failed.");
-    error.stateCode = 422;
+    error.statusCode = 422;
     error.data = errors.array();
     throw error;
   }
@@ -49,28 +49,30 @@ exports.login = (req, res, next) => {
     .then((user) => {
       if (!user) {
         const error = new Error("User not found!");
-        error.stateCode = 401;
+        error.statusCode = 401;
         throw error;
       }
+      // console.log(user.password);
+      // console.log(password);
       loadedUser = user;
       return bcrypt.compare(password, user.password);
     })
     .then((isEqual) => {
       if (!isEqual) {
         const error = new Error("Wrong password");
-        error.stateCode = 401;
+        error.statusCode = 401;
         throw error;
       }
       const token = jwt.sign(
         {
           email: loadedUser.email,
-          userId: loadUser._id.toString(),
+          userId: loadedUser._id.toString(),
         },
         "somesuperdupersecretsecretkey",
         { expiresIn: "1h" }
       );
       res.status(200).json({
-        token: toke,
+        token: token,
         userId: loadedUser._id.toString(),
       });
     })
