@@ -32,4 +32,12 @@ router.put(
 
 router.post("/login", authController.login);
 
+router.get("/status", isAuth, authController.getStatus);
+router.patch(
+  "/status",
+  isAuth,
+  [body("status").trim().notEmpty()],
+  authController.putStatus
+);
+
 module.exports = router;
