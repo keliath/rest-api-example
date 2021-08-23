@@ -3,7 +3,7 @@ const { validationResult } = require("express-validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-exports.signup = (req, res, next) => {
+exports.signup = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new Error("Validation Failed.");
@@ -15,120 +15,112 @@ exports.signup = (req, res, next) => {
   const name = req.body.name;
   const password = req.body.password;
 
-  bcrypt
-    .hash(password, 12)
-    .then((hasehdPw) => {
-      const user = new User({
-        email: email,
-        name: name,
-        password: hasehdPw,
-      });
-      return user.save();
-    })
-    .then((result) => {
-      res.status(201).json({
-        message: "User Created!",
-        userId: result._id,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  try {
+    const hasehdPw = await bcrypt.hash(password, 12);
+    const user = new User({
+      email: email,
+      name: name,
+      password: hasehdPw,
     });
+    const result = await user.save();
+
+    res.status(201).json({
+      message: "User Created!",
+      userId: result._id,
+    });
+  } catch (err) {
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.login = (req, res, next) => {
+exports.login = async (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
-  let loadedUser;
-  User.findOne({
-    email: email,
-  })
-    .then((user) => {
-      if (!user) {
-        const error = new Error("User not found!");
-        error.statusCode = 401;
-        throw error;
-      }
-      // console.log(user.password);
-      // console.log(password);
-      loadedUser = user;
-      return bcrypt.compare(password, user.password);
-    })
-    .then((isEqual) => {
-      if (!isEqual) {
-        const error = new Error("Wrong password");
-        error.statusCode = 401;
-        throw error;
-      }
-      const token = jwt.sign(
-        {
-          email: loadedUser.email,
-          userId: loadedUser._id.toString(),
-        },
-        "somesuperdupersecretsecretkey",
-        { expiresIn: "1h" }
-      );
-      res.status(200).json({
-        token: token,
-        userId: loadedUser._id.toString(),
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+
+  try {
+    const user = await User.findOne({
+      email: email,
     });
+    if (!user) {
+      const error = new Error("User not found!");
+      error.statusCode = 401;
+      throw error;
+    }
+    const isEqual = await bcrypt.compare(password, user.password);
+
+    if (!isEqual) {
+      const error = new Error("Wrong password");
+      error.statusCode = 401;
+      throw error;
+    }
+    const token = jwt.sign(
+      {
+        email: user.email,
+        userId: user._id.toString(),
+      },
+      "somesuperdupersecretsecretkey",
+      { expiresIn: "1h" }
+    );
+    res.status(200).json({
+      token: token,
+      userId: user._id.toString(),
+    });
+  } catch (err) {
+    //catch
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.getStatus = (req, res, next) => {
+exports.getStatus = async (req, res, next) => {
   const userId = req.userId;
-  User.findById(userId)
-    .then((user) => {
-      if (!user) {
-        const error = new Error("user dont found");
-        error.statusCode = 404;
-        throw error;
-      }
-      res.status(200).json({
-        message: "user status",
-        status: user.status,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("user dont found");
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json({
+      message: "user status",
+      status: user.status,
     });
+  } catch (err) {
+    //catch
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
 
-exports.putStatus = (req, res, next) => {
+exports.putStatus = async (req, res, next) => {
   const userId = req.userId;
   const updStatus = req.body.status;
-  User.findById(userId)
-    .then((user) => {
-      if (!user) {
-        const error = new Error("user dont found");
-        error.statusCode = 404;
-        throw error;
-      }
-      user.status = updStatus;
-      return user.save();
-    })
-    .then((result) => {
-      res.status(201).json({
-        message: "status changed: new status " + updStatus,
-        status: updStatus,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error("user dont found");
+      error.statusCode = 404;
+      throw error;
+    }
+    user.status = updStatus;
+    await user.save();
+
+    res.status(201).json({
+      message: "status changed: new status " + updStatus,
+      status: updStatus,
     });
+  } catch (err) {
+    //catch
+    if (!err.statusCode) {
+      err.statusCode = 500;
+    }
+    next(err);
+  }
 };
